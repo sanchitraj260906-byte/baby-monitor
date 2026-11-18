@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#a79bf6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Baby Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #b3a8f7;
+      --bg-deep: #9c8ef2;
+      --purple: #8a76ee;
+      --purple-dark: #6f5ad9;
+      --ink: #2e2a4a;
+      --muted: #8c88a6;
+      --card: #ffffff;
+      --orange: #ffa94d;  --orange-soft: #fff0de;
+      --pink: #ff7fa6;    --pink-soft: #ffe5ee;
+      --blue: #5fb8ef;    --blue-soft: #e2f3ff;
+      --green: #84cc5b;   --green-soft: #ebf8e2;
+      --red: #ff5c7a;
+      --shadow: 0 10px 30px rgba(87, 66, 190, 0.18);
+      --radius: 26px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html {
+      min-height: 100%; background-color: var(--bg-deep);
+      background-image: radial-gradient(circle at 15% 0%, #cfc7fb 0, transparent 420px),
+                        radial-gradient(circle at 100% 300px, #c3b8fa 0, transparent 360px),
+                        linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+      background-repeat: no-repeat;
+    }
+    body {
+      margin: 0; min-height: 100vh; color: var(--ink);
+      font-family: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+      padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
+    }
+    .app { max-width: 460px; margin: 0 auto; }
+    .hidden { display: none !important; }
+
+    /* ---------- Header (purple card like the "Jun 8" card) ---------- */
+    .hero {
+      background: linear-gradient(160deg, #9886f3 0%, var(--purple) 100%);
+      color: #fff; border-radius: var(--radius); padding: 20px 20px 18px;
+      box-shadow: var(--shadow); position: relative; overflow: hidden;
+    }
+    .hero::after {
+      content: ""; position: absolute; right: -30px; top: -34px; width: 120px; height: 120px;
+      border-radius: 50%; border: 18px solid rgba(255,255,255,0.14);
+    }
+    .hero h1 { margin: 0; font-size: 1.55rem; font-weight: 900; letter-spacing: -0.01em; }
+    .hero .sub { margin-top: 2px; font-size: 0.95rem; opacity: 0.9; font-weight: 700; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
+      background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.45);
+      padding: 6px 12px; border-radius: 999px; font-weight: 800; font-size: 0.85rem;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #d8d3f5; }
+    .dot.live { background: #9ef07a; box-shadow: 0 0 0 4px rgba(158,240,122,0.3); }
+    .dot.off { background: #ffc0cc; }
+
+    /* ---------- Banners ---------- */
+    .banner {
+      margin-top: 14px; border-radius: 20px; padding: 14px 16px; font-weight: 800;
+      display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow);
+    }
+    .banner svg { flex: none; }
+    .banner small { display: block; font-weight: 700; opacity: 0.9; margin-top: 2px; }
+    .banner.alert { background: var(--red); color: #fff; animation: pulse 0.9s infinite alternate; }
+    .banner.offline { background: #fff; color: var(--ink); }
+    .banner.hint { background: #fff; color: var(--purple-dark); font-weight: 700; font-size: 0.92rem; }
+    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.015); filter: brightness(1.08); } }
+
+    /* ---------- Sheet (white panel like the app screens) ---------- */
+    .sheet { margin-top: 14px; background: #f7f6ff; border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+    .section-title { display: flex; justify-content: space-between; align-items: baseline; margin: 2px 4px 12px; }
+    .section-title h2 { margin: 0; font-size: 1.15rem; font-weight: 900; }
+    .section-title span { color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+
+    .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tile { border-radius: 22px; padding: 14px; background: var(--card); position: relative; transition: transform .2s; }
+    .tile .ico { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 10px; }
+    .tile .label { font-size: 0.8rem; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+    .tile .value { font-size: 1.25rem; font-weight: 900; margin: 2px 0 8px; }
+    .chip { display: inline-block; font-size: 0.78rem; font-weight: 800; padding: 4px 10px; border-radius: 999px; }
+    .chip.ok { background: var(--green-soft); color: #4d9a2a; }
+    .chip.bad { background: #ffe1e7; color: #e0284f; }
+    .chip.warn { background: var(--orange-soft); color: #d07a17; }
+    .chip.idle { background: #eeecf8; color: var(--muted); }
+    .tile.alarm { box-shadow: 0 0 0 3px var(--red) inset; transform: translateY(-2px); }
+    .t-cry .ico { background: var(--pink-soft); color: var(--pink); }
+    .t-wet .ico { background: var(--blue-soft); color: var(--blue); }
+    .t-gas .ico { background: var(--green-soft); color: var(--green); }
+    .t-buz .ico { background: var(--orange-soft); color: var(--orange); }
+
+    /* ---------- Dryness ring (like the sleep-tracking ring) ---------- */
+    .ring-card { margin-top: 12px; background: var(--card); border-radius: 22px; padding: 16px; display: flex; align-items: center; gap: 16px; }
+    .ring { position: relative; width: 112px; height: 112px; flex: none; }
+    .ring svg { transform: rotate(-90deg); }
+    .ring .center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+    .ring .pct { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+    .ring .cap { font-size: 0.72rem; color: var(--muted); font-weight: 800; }
+    .ring-text h3 { margin: 0 0 4px; font-size: 1.05rem; font-weight: 900; }
+    .ring-text p { margin: 0; color: var(--muted); font-size: 0.86rem; font-weight: 700; line-height: 1.35; }
+
+    /* ---------- Controls ---------- */
+    .controls { margin-top: 12px; background: var(--card); border-radius: 22px; padding: 6px 16px; }
+    .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+    .row + .row { border-top: 1.5px solid #f0eefa; }
+    .row .ico { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; flex: none; }
+    .row .txt { flex: 1; min-width: 0; }
+    .row .txt b { display: block; font-weight: 900; }
+    .row .txt span { color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+    .switch { width: 54px; height: 32px; border-radius: 999px; background: #e3e0f5; border: none; position: relative; cursor: pointer; flex: none; transition: background .2s; }
+    .switch::after { content: ""; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.15); transition: left .2s; }
+    .switch.on { background: var(--purple); }
+    .switch.on::after { left: 26px; }
+    .round-btn {
+      width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer; flex: none;
+      background: var(--purple); color: #fff; display: grid; place-items: center;
+      box-shadow: 0 8px 18px rgba(138,118,238,0.45); transition: transform .15s, background .2s;
+    }
+    .round-btn:active { transform: scale(0.94); }
+    .round-btn.on { background: var(--red); box-shadow: 0 8px 18px rgba(255,92,122,0.45); }
+    button:disabled, .switch:disabled { opacity: 0.45; cursor: not-allowed; }
+    .pending { text-align: center; color: var(--purple-dark); font-size: 0.82rem; font-weight: 800; padding: 0 0 10px; min-height: 1em; }
+
+    .foot { text-align: center; margin-top: 16px; }
+    .link { background: none; border: none; color: #fff; font-weight: 800; font-family: inherit; font-size: 0.9rem; text-decoration: underline; cursor: pointer; opacity: 0.9; }
+    .meta { color: rgba(255,255,255,0.85); font-size: 0.78rem; font-weight: 700; margin-top: 6px; }
+
+    /* ---------- Setup ---------- */
+    .setup { margin-top: 14px; background: var(--card); border-radius: var(--radius); padding: 22px 20px; box-shadow: var(--shadow); }
+    .setup h2 { margin: 0 0 4px; font-weight: 900; font-size: 1.25rem; }
+    .setup p { margin: 0 0 8px; color: var(--muted); font-weight: 700; font-size: 0.9rem; }
+    label { display: block; font-size: 0.8rem; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 6px; }
+    input { width: 100%; padding: 14px 16px; border-radius: 16px; border: 2px solid #ece9fb; background: #f7f6ff; color: var(--ink); font: 700 1rem "Nunito", system-ui, sans-serif; outline: none; }
+    input:focus { border-color: var(--purple); background: #fff; }
+    .help { font-size: 0.78rem; color: var(--muted); font-weight: 700; margin-top: 6px; }
+    .error { color: #e0284f; font-weight: 800; font-size: 0.9rem; min-height: 1.2em; margin-top: 14px; }
+    .primary { width: 100%; margin-top: 10px; padding: 16px; border: none; border-radius: 999px; background: var(--purple); color: #fff; font: 900 1.05rem "Nunito", system-ui, sans-serif; cursor: pointer; box-shadow: 0 8px 18px rgba(138,118,238,0.45); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== Header ===== -->
+  <div class="hero">
+    <h1>Baby Monitor</h1>
+    <div class="sub" id="hero-sub">Remote dashboard</div>
+    <div class="pill"><span class="dot" id="conn-dot"></span><span id="conn-text">Not connected</span></div>
+  </div>
+
+  <!-- ===== Setup (first time) ===== -->
+  <div class="setup hidden" id="setup-view">
+    <h2>Connect to your monitor</h2>
+    <p>Type these once. They stay only on this phone.</p>
+    <label for="in-key">Monitor key</label>
+    <input id="in-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Same as MONITOR_KEY">
+    <div class="help">The secret word from Vercel (README Part B) and the Arduino code.</div>
+    <label for="in-device">Monitor name</label>
+    <input id="in-device" value="baby1" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="help">Must match DEVICE_ID in the Arduino code exactly.</div>
+    <div class="error" id="setup-error"></div>
+    <button class="primary" id="connect-btn" type="button">Connect</button>
+  </div>
+
+  <!-- ===== Monitor ===== -->
+  <div id="monitor-view" class="hidden">
+    <div class="banner hint hidden" id="sound-hint">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      <div>Tap anywhere once to turn on sound alerts</div>
+    </div>
+    <div class="banner offline hidden" id="offline-banner">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e0284f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/><path d="M3 3l18 18"/></svg>
+      <div>Monitor is OFFLINE<small id="offline-why">Not watching the baby right now</small></div>
+    </div>
+    <div class="banner alert hidden" id="alert-banner">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.01"/></svg>
+      <div>Check on the baby!<small id="alert-why"></small></div>
+    </div>
+
+    <div class="sheet">
+      <div class="section-title"><h2>Right now</h2><span id="updated">waiting for data…</span></div>
+      <div class="tiles">
+        <div class="tile t-cry" id="tile-cry">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h2l2.5-5 3 10 3-14 3 13 2-4h2.5"/></svg></div>
+          <div class="label">Crying</div>
+          <div class="value" id="cry-val">--</div>
+          <span class="chip idle" id="cry-chip">Checking</span>
+        </div>
+        <div class="tile t-wet" id="tile-wet">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M12 3c3 4.2 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 3-6.8 6-11z"/></svg></div>
+          <div class="label">Diaper</div>
+          <div class="value" id="wet-val">--</div>
+          <span class="chip idle" id="wet-chip">Checking</span>
+        </div>
+        <div class="tile t-gas" id="tile-gas">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></svg></div>
+          <div class="label">Air (gas)</div>
+          <div class="value" id="gas-val">--</div>
+          <span class="chip idle" id="gas-chip">Checking</span>
+        </div>
+        <div class="tile t-buz" id="tile-buz">
+          <div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4l2-2z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></div>
+          <div class="label">Room buzzer</div>
+          <div class="value" id="buz-val">--</div>
+          <span class="chip idle" id="buz-chip">Checking</span>
+        </div>
+      </div>
+
+      <div class="ring-card">
+        <div class="ring">
+          <svg width="112" height="112" viewBox="0 0 112 112">
+            <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#84cc5b"/><stop offset="1" stop-color="#5fb8ef"/></linearGradient></defs>
+            <circle cx="56" cy="56" r="46" fill="none" stroke="#efedfa" stroke-width="12"/>
+            <circle id="ring-arc" cx="56" cy="56" r="46" fill="none" stroke="url(#g)" stroke-width="12" stroke-linecap="round" stroke-dasharray="289.03" stroke-dashoffset="289.03" style="transition: stroke-dashoffset .6s"/>
+          </svg>
+          <div class="center"><div><div class="pct" id="ring-pct">--</div><div class="cap">dry</div></div></div>
+        </div>
+        <div class="ring-text">
+          <h3>Diaper dryness</h3>
+          <p id="ring-detail">Sensor reading will appear here.</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="row">
+          <div class="ico" style="background:var(--blue-soft);color:var(--purple)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></div>
+          <div class="txt"><b>Sleep mode</b><span id="mute-sub">Room buzzer stays quiet, phone still alerts</span></div>
+          <button class="switch" id="mute-btn" type="button" aria-label="Sleep mode" disabled></button>
+        </div>
+        <div class="row">
+          <div class="ico" style="background:var(--orange-soft);color:var(--orange)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4l2-2z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></div>
+          <div class="txt"><b id="buzzer-title">Test buzzer</b><span id="buzzer-sub">Tap to sound the room buzzer</span></div>
+          <button class="round-btn" id="buzzer-btn" type="button" aria-label="Test buzzer" disabled>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          </button>
+        </div>
+        <div class="pending" id="pending"></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <button class="link" id="logout-btn" type="button">Change connection settings</button>
+      <div class="meta" id="meta"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---------------- Settings (kept only on this phone) ----------------
+  const STORE_KEY = 'babyMonitorVercel';
+  function loadSettings() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; } catch (e) { return null; } }
+  function storeSettings(s) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {} }
+  function clearSettings() { try { localStorage.removeItem(STORE_KEY); } catch (e) {} }
+
+  const POLL_VISIBLE_MS = 4000;   // page on screen: check every 4 s
+  const POLL_HIDDEN_MS = 30000;   // page hidden: check rarely (saves the free monthly quota)
+  const API = '/api/monitor';
+
+  const el = (id) => document.getElementById(id);
+  let settings = loadSettings();
+  let last = null;         // last readings from the board
+  let ageMs = Infinity;    // how old those readings are
+  let live = false;
+  let pollTimer = null;
+  let pending = null;      // { cmd, until }
+  let polling = false;
+
+  // ---------------- Sound, vibration, screen awake ----------------
+  let audioCtx = null;
+  function unlockAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) {}
+    el('sound-hint').classList.add('hidden');
+    requestWakeLock();
+  }
+  function beep() {
+    try {
+      if (!audioCtx) return;
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(880, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + 0.25);
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate([300, 100, 300]); } catch (e) {}
+  }
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      }
+    } catch (e) {}
+  }
+
+  // ---------------- Talking to Vercel ----------------
+  async function api(op, opts = {}) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const res = await fetch(API + '?op=' + op + '&id=' + encodeURIComponent(settings.device) + (opts.query || ''), {
+        method: opts.method || 'GET',
+        headers: { 'x-monitor-key': settings.key, 'content-type': 'text/plain' },
+        body: opts.body, cache: 'no-store', signal: ctrl.signal,
+      });
+      let data = null;
+      try { data = await res.json(); } catch (e) {}
+      return { status: res.status, data };
+    } finally { clearTimeout(t); }
+  }
+
+  function setConn(text, state) {
+    el('conn-text').textContent = text;
+    el('conn-dot').className = 'dot' + (state ? ' ' + state : '');
+  }
+
+  async function poll() {
+    if (!settings || polling) return;
+    polling = true;
+    try {
+      const watch = document.visibilityState === 'visible' ? '&watch=1' : '';
+      const r = await api('status', { query: watch });
+      if (r.status === 401) { stop(); showSetup('Wrong monitor key. Check it and try again.'); return; }
+      if (r.status === 400) { stop(); showSetup('Monitor name can only use letters, numbers and dashes.'); return; }
+      if (r.status !== 200 || !r.data) {
+        setConn('Server problem: ' + ((r.data && r.data.error) || ('error ' + r.status)), 'off');
+        live = false; render(); return;
+      }
+      last = r.data.status;
+      ageMs = last ? Math.max(0, r.data.now - last.ts) : Infinity;
+      const nextS = (last && last.next) ? last.next : 20;
+      live = !!last && ageMs < (nextS * 2 * 1000 + 8000);
+      if (pending && last && pendingDone(pending.cmd, last)) pending = null;
+      render();
+    } catch (e) {
+      setConn('Cannot reach the server - retrying', 'off');
+      live = false; render();
+    } finally {
+      polling = false;
+      schedule();
+    }
+  }
+  function schedule() {
+    clearTimeout(pollTimer);
+    if (!settings) return;
+    pollTimer = setTimeout(poll, document.visibilityState === 'visible' ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
+  }
+  function stop() { clearTimeout(pollTimer); pollTimer = null; }
+
+  // ---------------- Drawing ----------------
+  function chip(id, cls, text) { const c = el(id); c.className = 'chip ' + cls; c.textContent = text; }
+  function ago(ms) {
+    if (!isFinite(ms)) return 'never';
+    const s = Math.round(ms / 1000);
+    if (s < 5) return 'just now';
+    if (s < 90) return s + ' s ago';
+    const m = Math.round(s / 60);
+    return m < 90 ? m + ' min ago' : Math.round(m / 60) + ' h ago';
+  }
+  function alerts() {
+    if (!live || !last) return [];
+    const a = [];
+    if (last.mic === 1) a.push('crying');
+    if (last.rain < last.rainThresh) a.push('wet diaper');
+    if (last.gas === 0) a.push('gas detected');
+    return a;
+  }
+
+  function render() {
+    const d = last;
+    el('offline-banner').classList.toggle('hidden', live || !settings);
+    el('mute-btn').disabled = !live;
+    el('buzzer-btn').disabled = !live;
+    el('hero-sub').textContent = settings ? 'Watching: ' + settings.device : 'Remote dashboard';
+
+    if (live) setConn('Live', 'live');
+    else if (d) { setConn('Monitor offline', 'off'); el('offline-why').textContent = 'Last heard ' + ago(ageMs) + '. Check power and Wi-Fi.'; }
+    else if (settings) { setConn('Waiting for monitor', ''); el('offline-why').textContent = 'The monitor has not sent anything yet. Check it is switched on (README Part D).'; }
+
+    el('updated').textContent = d ? 'updated ' + ago(ageMs) : 'waiting for data…';
+    const a = alerts();
+    el('alert-banner').classList.toggle('hidden', a.length === 0);
+    el('alert-why').textContent = a.join(' + ');
+    if (!d) return;
+
+    const crying = d.mic === 1, wet = d.rain < d.rainThresh, gas = d.gas === 0;
+    el('cry-val').textContent = crying ? 'Sound' : 'Quiet';
+    chip('cry-chip', crying ? 'bad' : 'ok', crying ? 'Crying!' : 'Calm');
+    el('wet-val').textContent = wet ? 'Wet' : 'Dry';
+    chip('wet-chip', wet ? 'bad' : 'ok', wet ? 'Change me' : 'All good');
+    el('gas-val').textContent = gas ? 'Gas!' : 'Clean';
+    chip('gas-chip', gas ? 'bad' : 'ok', gas ? 'Ventilate now' : 'Safe');
+    if (d.buzzer) { el('buz-val').textContent = 'On'; chip('buz-chip', 'bad', 'Sounding'); }
+    else if (d.muted) { el('buz-val').textContent = 'Muted'; chip('buz-chip', 'warn', 'Sleep mode'); }
+    else { el('buz-val').textContent = 'Off'; chip('buz-chip', 'idle', 'Standby'); }
+    el('tile-cry').classList.toggle('alarm', live && crying);
+    el('tile-wet').classList.toggle('alarm', live && wet);
+    el('tile-gas').classList.toggle('alarm', live && gas);
+
+    // Dryness ring: 1023 = fully dry, 0 = soaked
+    const pct = Math.max(0, Math.min(100, Math.round((d.rain / 1023) * 100)));
+    el('ring-pct').textContent = pct + '%';
+    el('ring-arc').style.strokeDashoffset = String(289.03 * (1 - pct / 100));
+    el('ring-detail').textContent = 'Sensor ' + d.rain + ' of 1023. Below ' + d.rainThresh + ' counts as wet.';
+
+    el('mute-btn').classList.toggle('on', !!d.muted);
+    el('mute-sub').textContent = d.muted ? 'On: room buzzer is quiet, phone still alerts' : 'Off: room buzzer sounds on alerts';
+    el('buzzer-btn').classList.toggle('on', !!d.buzzerManual);
+    el('buzzer-title').textContent = d.buzzerManual ? 'Buzzer is ON' : 'Test buzzer';
+    el('buzzer-sub').textContent = d.buzzerManual ? 'Tap to stop it' : 'Tap to sound the room buzzer';
+
+    if (pending && Date.now() > pending.until) pending = null;
+    el('pending').textContent = pending ? 'Sending… the monitor picks this up within a few seconds' : '';
+    el('meta').textContent = 'Monitor checks in every ' + (d.next || '?') + ' s · up ' + Math.round((d.uptime || 0) / 60) + ' min';
+  }
+
+  // ---------------- Buttons ----------------
+  function pendingDone(cmd, d) {
+    if (cmd === 'mute_on') return d.muted;
+    if (cmd === 'mute_off') return !d.muted;
+    if (cmd === 'buzzer_on') return d.buzzerManual;
+    if (cmd === 'buzzer_off') return !d.buzzerManual;
+    return true;
+  }
+  async function send(cmd) {
+    unlockAudio();
+    pending = { cmd, until: Date.now() + 20000 };
+    render();
+    try {
+      const r = await api('cmd', { method: 'POST', body: cmd });
+      if (r.status !== 200) { pending = null; el('pending').textContent = 'Could not send: ' + ((r.data && r.data.error) || r.status); return; }
+    } catch (e) { pending = null; el('pending').textContent = 'Could not send - check this phone\'s internet'; return; }
+    setTimeout(poll, 2500);
+  }
+  el('mute-btn').addEventListener('click', () => { if (last) send(last.muted ? 'mute_off' : 'mute_on'); });
+  el('buzzer-btn').addEventListener('click', () => { if (last) send(last.buzzerManual ? 'buzzer_off' : 'buzzer_on'); });
+
+  // ---------------- Screens ----------------
+  function showSetup(err) {
+    el('monitor-view').classList.add('hidden');
+    el('setup-view').classList.remove('hidden');
+    el('setup-error').textContent = err || '';
+    if (settings) { el('in-key').value = settings.key || ''; el('in-device').value = settings.device || 'baby1'; }
+    setConn('Not connected', '');
+  }
+  function showMonitor() {
+    el('setup-view').classList.add('hidden');
+    el('monitor-view').classList.remove('hidden');
+    if (!audioCtx || audioCtx.state !== 'running') el('sound-hint').classList.remove('hidden');
+    last = null; ageMs = Infinity; live = false; pending = null;
+    setConn('Connecting…', '');
+    render();
+    poll();
+  }
+  el('connect-btn').addEventListener('click', () => {
+    const s = { key: el('in-key').value.trim(), device: el('in-device').value.trim() };
+    if (!s.key || !s.device) { el('setup-error').textContent = 'Please fill in both boxes.'; return; }
+    if (!/^[A-Za-z0-9-]{1,32}$/.test(s.device)) { el('setup-error').textContent = 'Monitor name: letters, numbers and dashes only.'; return; }
+    unlockAudio();
+    settings = s; storeSettings(s);
+    showMonitor();
+  });
+  el('logout-btn').addEventListener('click', () => { stop(); clearSettings(); settings = null; showSetup(''); });
+
+  document.addEventListener('click', unlockAudio);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { if (audioCtx) requestWakeLock(); if (settings) poll(); }
+  });
+
+  // Beep once a second while an alert is active, and keep "updated … ago" fresh
+  setInterval(() => {
+    if (isFinite(ageMs)) ageMs += 1000;
+    if (alerts().length) beep();
+    if (settings && !el('monitor-view').classList.contains('hidden')) render();
+  }, 1000);
+
+  if (settings && settings.key && settings.device) showMonitor(); else { settings = null; showSetup(''); }
+</script>
+</body>
+</html>
